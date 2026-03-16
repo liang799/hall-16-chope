@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Lock, Unlock, Users, Building2, Shield, Trash2 } from 'lucide-react'
+import { Lock, Unlock, Users, Building2, Shield, Trash2, Download } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, RoomWithApplications } from '@/lib/types'
 
@@ -103,6 +103,136 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
   const roomsWithApplications = rooms.filter(r => r.applications.length > 0)
   const totalApplications = rooms.reduce((sum, r) => sum + r.applications.length, 0)
   const lockedRooms = rooms.filter(r => r.is_locked).length
+
+  const exportToExcel = () => {
+    // Create CSV content (compatible with Excel)
+    const headers = [
+      'Room Number',
+      'Block',
+      'Floor',
+      'Applicant Name',
+      'Applicant Contact',
+      'Occupant Name',
+      'Point Provider',
+      'Points',
+      'Type',
+      'Previous Room',
+      'Applied At'
+    ]
+
+    const rows: string[][] = []
+    
+    roomsWithApplications.forEach(room => {
+      room.applications.forEach(app => {
+        rows.push([
+          room.room_number,
+          room.block,
+          room.floor.toString(),
+          app.applicant_name,
+          app.applicant_contact,
+          app.occupant_name,
+          app.point_provider_name,
+          app.point_value.toString(),
+          app.is_hall_internal ? 'Hall Internal' : 'Hall External',
+          app.previous_room || '-',
+          new Date(app.created_at).toLocaleString()
+        ])
+      })
+    })
+
+    // Sort by room number, then by points (desc), then by hall internal
+    rows.sort((a, b) => {
+      if (a[0] !== b[0]) return a[0].localeCompare(b[0])
+      const aInternal = a[8] === 'Hall Internal' ? 1 : 0
+      const bInternal = b[8] === 'Hall Internal' ? 1 : 0
+      if (aInternal !== bInternal) return bInternal - aInternal
+      return parseInt(b[7]) - parseInt(a[7])
+    })
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+
+    // Add BOM for Excel to recognize UTF-8
+    const BOM = '\uFEFF'
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `hall16-applications-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const exportLeaderboard = () => {
+    // Export the leaderboard with winners highlighted
+    const headers = [
+      'Room Number',
+      'Block',
+      'Floor',
+      'Winner Name',
+      'Winner Contact',
+      'Winner Points',
+      'Winner Type',
+      'Total Applications'
+    ]
+
+    const rows: string[][] = []
+    
+    roomsWithApplications.forEach(room => {
+      // Sort applications by deconfliction rules
+      const sorted = [...room.applications].sort((a, b) => {
+        // Hall internal wins over external
+        if (a.is_hall_internal !== b.is_hall_internal) {
+          return a.is_hall_internal ? -1 : 1
+        }
+        // Higher points wins
+        if (a.point_value !== b.point_value) {
+          return b.point_value - a.point_value
+        }
+        // Earlier application wins
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      })
+
+      const winner = sorted[0]
+      if (winner) {
+        rows.push([
+          room.room_number,
+          room.block,
+          room.floor.toString(),
+          winner.applicant_name,
+          winner.applicant_contact,
+          winner.point_value.toString(),
+          winner.is_hall_internal ? 'Hall Internal' : 'Hall External',
+          room.applications.length.toString()
+        ])
+      }
+    })
+
+    // Sort by room number
+    rows.sort((a, b) => a[0].localeCompare(b[0]))
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+
+    const BOM = '\uFEFF'
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    
+    link.setAttribute('href', url)
+    link.setAttribute('download', `hall16-leaderboard-${new Date().toISOString().split('T')[0]}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   return (
     <main className="container py-8">
@@ -221,10 +351,32 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
         <TabsContent value="applications">
           <Card>
             <CardHeader>
-              <CardTitle>Applications by Room</CardTitle>
-              <CardDescription>
-                View and manage all room applications
-              </CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>Applications by Room</CardTitle>
+                  <CardDescription>
+                    View and manage all room applications
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={exportToExcel}
+                    disabled={roomsWithApplications.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export All
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={exportLeaderboard}
+                    disabled={roomsWithApplications.length === 0}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export Winners
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {roomsWithApplications.length === 0 ? (
