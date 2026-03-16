@@ -2,6 +2,18 @@
 
 import { useState, useMemo } from 'react'
 import {
+  useReactTable,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  createColumnHelper,
+  type ColumnDef,
+  type SortingState,
+  type ColumnFiltersState,
+} from '@tanstack/react-table'
+import {
   Table,
   TableBody,
   TableCell,
@@ -19,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Lock, Users, Search, Filter } from 'lucide-react'
+import { Lock, Users, Search, Filter, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import type { RoomWithApplications, RoomStatus } from '@/lib/types'
 
 interface RoomTableProps {
@@ -28,63 +40,199 @@ interface RoomTableProps {
   isLoggedIn: boolean
 }
 
+const columnHelper = createColumnHelper<RoomWithApplications>()
+
+const getRoomStatus = (room: RoomWithApplications): RoomStatus => {
+  if (room.is_locked) return 'locked'
+  if (room.applications.length > 0) return 'applied'
+  return 'available'
+}
+
+const getStatusBadge = (status: RoomStatus) => {
+  switch (status) {
+    case 'locked':
+      return (
+        <Badge variant="secondary" className="bg-muted text-muted-foreground">
+          <Lock className="mr-1 h-3 w-3" />
+          Locked
+        </Badge>
+      )
+    case 'applied':
+      return (
+        <Badge variant="default" className="bg-amber-500 text-amber-950 hover:bg-amber-500">
+          <Users className="mr-1 h-3 w-3" />
+          Applied
+        </Badge>
+      )
+    case 'available':
+      return (
+        <Badge variant="default" className="bg-emerald-500 text-emerald-950 hover:bg-emerald-500">
+          Available
+        </Badge>
+      )
+  }
+}
+
 export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
   const [blockFilter, setBlockFilter] = useState<string>('all')
   const [floorFilter, setFloorFilter] = useState<string>('all')
   const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState('')
 
   const floors = useMemo(() => {
     const uniqueFloors = [...new Set(rooms.map((r) => r.floor))].sort((a, b) => a - b)
     return uniqueFloors
   }, [rooms])
 
-  const getRoomStatus = (room: RoomWithApplications): RoomStatus => {
-    if (room.is_locked) return 'locked'
-    if (room.applications.length > 0) return 'applied'
-    return 'available'
-  }
-
-  const getStatusBadge = (status: RoomStatus) => {
-    switch (status) {
-      case 'locked':
-        return (
-          <Badge variant="secondary" className="bg-muted text-muted-foreground">
-            <Lock className="mr-1 h-3 w-3" />
-            Locked
-          </Badge>
-        )
-      case 'applied':
-        return (
-          <Badge variant="default" className="bg-amber-500 text-amber-950 hover:bg-amber-500">
-            <Users className="mr-1 h-3 w-3" />
-            Applied
-          </Badge>
-        )
-      case 'available':
-        return (
-          <Badge variant="default" className="bg-emerald-500 text-emerald-950 hover:bg-emerald-500">
-            Available
-          </Badge>
-        )
-    }
-  }
-
-  const filteredRooms = useMemo(() => {
+  // Filter data based on custom filters
+  const filteredData = useMemo(() => {
     return rooms.filter((room) => {
       const status = getRoomStatus(room)
-
       if (blockFilter !== 'all' && room.block !== blockFilter) return false
       if (floorFilter !== 'all' && room.floor !== parseInt(floorFilter)) return false
       if (roomTypeFilter !== 'all' && room.room_type !== roomTypeFilter) return false
       if (statusFilter !== 'all' && status !== statusFilter) return false
-      if (searchQuery && !room.room_number.toLowerCase().includes(searchQuery.toLowerCase()))
-        return false
-
       return true
     })
-  }, [rooms, blockFilter, floorFilter, roomTypeFilter, statusFilter, searchQuery])
+  }, [rooms, blockFilter, floorFilter, roomTypeFilter, statusFilter])
+
+  const columns = useMemo<ColumnDef<RoomWithApplications, unknown>[]>(
+    () => [
+      columnHelper.accessor('room_number', {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="-ml-4"
+          >
+            Room
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+        filterFn: 'includesString',
+      }),
+      columnHelper.accessor('block', {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="-ml-4"
+          >
+            Block
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => `Block ${info.getValue()}`,
+      }),
+      columnHelper.accessor('floor', {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="-ml-4"
+          >
+            Floor
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => `Floor ${info.getValue()}`,
+      }),
+      columnHelper.accessor('room_type', {
+        header: 'Type',
+        cell: (info) => (
+          <Badge
+            variant="outline"
+            className={
+              info.getValue() === 'single'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-green-500 text-green-600'
+            }
+          >
+            {info.getValue() === 'single' ? 'Single' : 'Double'}
+          </Badge>
+        ),
+      }),
+      columnHelper.display({
+        id: 'status',
+        header: 'Status',
+        cell: ({ row }) => {
+          const status = getRoomStatus(row.original)
+          return getStatusBadge(status)
+        },
+      }),
+      columnHelper.accessor('applications', {
+        header: ({ column }) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="-ml-4"
+          >
+            Applications
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
+        ),
+        cell: (info) => {
+          const count = info.getValue().length
+          return count > 0 ? (
+            <span className="text-sm">
+              {count} applicant{count > 1 ? 's' : ''}
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground">None</span>
+          )
+        },
+        sortingFn: (rowA, rowB) =>
+          rowA.original.applications.length - rowB.original.applications.length,
+      }),
+      columnHelper.display({
+        id: 'actions',
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => {
+          const status = getRoomStatus(row.original)
+          if (status === 'locked') return null
+          return (
+            <div className="text-right">
+              <Button
+                size="sm"
+                variant={status === 'available' ? 'default' : 'outline'}
+                onClick={() => onApply(row.original.id, row.original.room_number)}
+                disabled={!isLoggedIn}
+              >
+                {isLoggedIn ? 'Apply' : 'Login to Apply'}
+              </Button>
+            </div>
+          )
+        },
+      }),
+    ],
+    [onApply, isLoggedIn]
+  )
+
+  const table = useReactTable({
+    data: filteredData,
+    columns,
+    state: {
+      sorting,
+      columnFilters,
+      globalFilter,
+    },
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 20,
+      },
+    },
+  })
 
   return (
     <div className="space-y-4">
@@ -149,8 +297,8 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search room number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={globalFilter ?? ''}
+            onChange={(e) => setGlobalFilter(e.target.value)}
             className="pl-9"
           />
         </div>
@@ -159,83 +307,96 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Room</TableHead>
-              <TableHead>Block</TableHead>
-              <TableHead>Floor</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Applications</TableHead>
-              <TableHead className="text-right">Action</TableHead>
-            </TableRow>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead key={header.id}>
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
           </TableHeader>
           <TableBody>
-            {filteredRooms.length === 0 ? (
+            {table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={columns.length} className="text-center py-8 text-muted-foreground">
                   No rooms found matching your filters
                 </TableCell>
               </TableRow>
             ) : (
-              filteredRooms.map((room) => {
-                const status = getRoomStatus(room)
-                return (
-                  <TableRow key={room.id}>
-                    <TableCell className="font-medium">{room.room_number}</TableCell>
-                    <TableCell>Block {room.block}</TableCell>
-                    <TableCell>Floor {room.floor}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={room.room_type === 'single' ? 'border-blue-500 text-blue-600' : 'border-green-500 text-green-600'}>
-                        {room.room_type === 'single' ? 'Single' : 'Double'}
-                      </Badge>
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
-                    <TableCell>{getStatusBadge(status)}</TableCell>
-                    <TableCell>
-                      {room.applications.length > 0 ? (
-                        <span className="text-sm">
-                          {room.applications.length} applicant{room.applications.length > 1 ? 's' : ''}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">None</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {status !== 'locked' && (
-                        <Button
-                          size="sm"
-                          variant={status === 'available' ? 'default' : 'outline'}
-                          onClick={() => onApply(room.id, room.room_number)}
-                          disabled={!isLoggedIn}
-                        >
-                          {isLoggedIn ? 'Apply' : 'Login to Apply'}
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })
+                  ))}
+                </TableRow>
+              ))
             )}
           </TableBody>
         </Table>
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>
-          Showing {filteredRooms.length} of {rooms.length} rooms
-        </span>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-emerald-500" />
-            <span>Available</span>
+          <span>
+            Showing {table.getRowModel().rows.length} of {filteredData.length} rooms
+          </span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-emerald-500" />
+              <span>Available</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-amber-500" />
+              <span>Applied</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-muted" />
+              <span>Locked</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-amber-500" />
-            <span>Applied</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="h-3 w-3 rounded-full bg-muted" />
-            <span>Locked</span>
-          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className="text-sm">
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Select
+            value={table.getState().pagination.pageSize.toString()}
+            onValueChange={(value) => table.setPageSize(Number(value))}
+          >
+            <SelectTrigger className="w-20">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[10, 20, 30, 50, 100].map((pageSize) => (
+                <SelectItem key={pageSize} value={pageSize.toString()}>
+                  {pageSize}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>
