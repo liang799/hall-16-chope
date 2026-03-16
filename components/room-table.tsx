@@ -10,7 +10,6 @@ import {
   getPaginationRowModel,
   flexRender,
   createColumnHelper,
-  type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
 } from '@tanstack/react-table'
@@ -100,7 +99,7 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
     })
   }, [rooms, blockFilter, floorFilter, roomTypeFilter, statusFilter])
 
-  const columns = useMemo<ColumnDef<RoomWithApplications, unknown>[]>(
+  const columns = useMemo(
     () => [
       columnHelper.accessor('room_number', {
         header: ({ column }) => (
