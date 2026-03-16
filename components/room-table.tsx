@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import {
   useReactTable,
   getCoreRowModel,
@@ -112,7 +113,11 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
-        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+        cell: (info) => (
+          <Link href={`/room/${info.row.original.id}`} className="font-medium hover:underline">
+            {info.getValue()}
+          </Link>
+        ),
         filterFn: 'includesString',
       }),
       columnHelper.accessor('block', {

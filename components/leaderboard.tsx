@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import Link from 'next/link'
 import {
   Table,
   TableBody,
@@ -158,7 +159,11 @@ export function Leaderboard({ rooms }: LeaderboardProps) {
                       <span>{index + 1}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium">{entry.room.room_number}</TableCell>
+                  <TableCell className="font-medium">
+                    <Link href={`/room/${entry.room.id}`} className="hover:underline">
+                      {entry.room.room_number}
+                    </Link>
+                  </TableCell>
                   <TableCell>
                     <Badge variant="secondary">
                       {entry.applications.length} applicant{entry.applications.length > 1 ? 's' : ''}
@@ -168,7 +173,9 @@ export function Leaderboard({ rooms }: LeaderboardProps) {
                     {entry.winner ? (
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-emerald-500" />
-                        <span>{entry.winner.applicant_name}</span>
+                        <Link href={`/user/${entry.winner.applicant_id}`} className="hover:underline">
+                          {entry.winner.applicant_name}
+                        </Link>
                         {entry.winner.is_hall_internal && (
                           <Badge variant="outline" className="text-xs">
                             Internal
