@@ -77,7 +77,7 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
-  const [blockFilter, setBlockFilter] = useState<string>('all')
+  const [blockFilter, setBlockFilter] = useState<string>('A')
   const [floorFilter, setFloorFilter] = useState<string>('all')
   const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
