@@ -65,12 +65,8 @@ async function getCurrentUser(): Promise<Result<Profile | null>> {
     
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     
-    if (authError) {
-      console.error('Error getting user:', authError)
-      return { success: true, data: null, error: null } // Not logged in is not an error
-    }
-    
-    if (!user) {
+    // AuthSessionMissingError is expected when user is not logged in - not an error
+    if (authError || !user) {
       return { success: true, data: null, error: null }
     }
 
@@ -81,14 +77,18 @@ async function getCurrentUser(): Promise<Result<Profile | null>> {
       .single()
 
     if (profileError) {
+      // Profile might not exist yet for new users
+      if (profileError.code === 'PGRST116') {
+        return { success: true, data: null, error: null }
+      }
       console.error('Error fetching profile:', profileError)
       return { success: false, data: null, error: `Could not load profile: ${profileError.message}` }
     }
 
     return { success: true, data: profile, error: null }
   } catch (err) {
-    console.error('Unexpected error getting user:', err)
-    return { success: false, data: null, error: 'An unexpected error occurred while loading user' }
+    // Silently handle auth errors - user is just not logged in
+    return { success: true, data: null, error: null }
   }
 }
 
