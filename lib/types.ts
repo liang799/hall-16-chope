@@ -3,6 +3,7 @@ export interface Room {
   room_number: string
   block: string
   floor: number
+  room_type: 'single' | 'double'
   is_locked: boolean
   created_at: string
   updated_at: string
