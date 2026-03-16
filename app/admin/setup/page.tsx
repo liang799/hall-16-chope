@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Shield, ArrowLeft, Loader2, CheckCircle } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
+import { verifySetupKeyAndCreateAdmin } from './actions'
 
 export default function AdminSetupPage() {
   const router = useRouter()
@@ -26,12 +26,6 @@ export default function AdminSetupPage() {
     e.preventDefault()
     setError(null)
 
-    // Validate setup key (simple security measure)
-    if (setupKey !== 'HALL16ADMIN2024') {
-      setError('Invalid setup key. Please contact the system administrator.')
-      return
-    }
-
     if (password !== confirmPassword) {
       setError('Passwords do not match')
       return
@@ -45,71 +39,19 @@ export default function AdminSetupPage() {
     setIsLoading(true)
 
     try {
-      const supabase = createClient()
+      const result = await verifySetupKeyAndCreateAdmin(
+        setupKey,
+        email,
+        password,
+        displayName
+      )
 
-      // Check if there are any existing admins
-      const { data: existingAdmins, error: checkError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('is_admin', true)
-        .limit(1)
-
-      if (checkError) {
-        throw new Error('Failed to check existing admins')
-      }
-
-      if (existingAdmins && existingAdmins.length > 0) {
-        setError('An admin account already exists. Please contact the existing admin to grant you access.')
-        setIsLoading(false)
+      if (!result.success) {
+        setError(result.error || 'An error occurred')
         return
       }
 
-      // Sign up the user
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            display_name: displayName,
-          },
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
-            `${window.location.origin}/admin`,
-        },
-      })
-
-      if (signUpError) {
-        throw signUpError
-      }
-
-      if (authData.user) {
-        // Wait a moment for the trigger to create the profile
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Update the profile to be admin
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ is_admin: true, display_name: displayName })
-          .eq('id', authData.user.id)
-
-        if (updateError) {
-          console.error('Error setting admin:', updateError)
-          // Try again with a direct insert if the trigger hasn't run yet
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: authData.user.id,
-              email: email,
-              display_name: displayName,
-              is_admin: true,
-            })
-          
-          if (insertError) {
-            throw new Error('Failed to set admin permissions')
-          }
-        }
-
-        setSuccess(true)
-      }
+      setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred')
     } finally {
@@ -119,7 +61,7 @@ export default function AdminSetupPage() {
 
   if (success) {
     return (
-      <main className="container flex min-h-[80vh] items-center justify-center py-8">
+      <main className="container px-4 md:px-6 lg:px-8 flex min-h-[80vh] items-center justify-center py-8">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100">
@@ -127,7 +69,7 @@ export default function AdminSetupPage() {
             </div>
             <CardTitle>Admin Account Created</CardTitle>
             <CardDescription>
-              Please check your email to confirm your account, then you can log in.
+              Your admin account has been created and verified. You can now log in.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -141,7 +83,7 @@ export default function AdminSetupPage() {
   }
 
   return (
-    <main className="container flex min-h-[80vh] items-center justify-center py-8">
+    <main className="container px-4 md:px-6 lg:px-8 flex min-h-[80vh] items-center justify-center py-8">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
