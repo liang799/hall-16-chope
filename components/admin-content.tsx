@@ -110,12 +110,13 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
       'Room Number',
       'Block',
       'Floor',
+      'Room Type',
       'Applicant Name',
       'Applicant Contact',
       'Occupant Name',
       'Point Provider',
       'Points',
-      'Type',
+      'Applicant Type',
       'Previous Room',
       'Applied At'
     ]
@@ -128,6 +129,7 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
           room.room_number,
           room.block,
           room.floor.toString(),
+          room.room_type === 'single' ? 'Single' : 'Double',
           app.applicant_name,
           app.applicant_contact,
           app.occupant_name,
@@ -140,13 +142,13 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
       })
     })
 
-    // Sort by room number, then by points (desc), then by hall internal
+    // Sort by room number, then by hall internal (desc), then by points (desc)
     rows.sort((a, b) => {
       if (a[0] !== b[0]) return a[0].localeCompare(b[0])
-      const aInternal = a[8] === 'Hall Internal' ? 1 : 0
-      const bInternal = b[8] === 'Hall Internal' ? 1 : 0
+      const aInternal = a[9] === 'Hall Internal' ? 1 : 0
+      const bInternal = b[9] === 'Hall Internal' ? 1 : 0
       if (aInternal !== bInternal) return bInternal - aInternal
-      return parseInt(b[7]) - parseInt(a[7])
+      return parseInt(b[8]) - parseInt(a[8])
     })
 
     const csvContent = [
@@ -174,6 +176,7 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
       'Room Number',
       'Block',
       'Floor',
+      'Room Type',
       'Winner Name',
       'Winner Contact',
       'Winner Points',
@@ -204,6 +207,7 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
           room.room_number,
           room.block,
           room.floor.toString(),
+          room.room_type === 'single' ? 'Single' : 'Double',
           winner.applicant_name,
           winner.applicant_contact,
           winner.point_value.toString(),
@@ -301,6 +305,7 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
                     <TableHead>Room</TableHead>
                     <TableHead>Block</TableHead>
                     <TableHead>Floor</TableHead>
+                    <TableHead>Type</TableHead>
                     <TableHead>Applications</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Lock</TableHead>
@@ -312,6 +317,11 @@ export function AdminContent({ rooms, profiles }: AdminContentProps) {
                       <TableCell className="font-medium">{room.room_number}</TableCell>
                       <TableCell>Block {room.block}</TableCell>
                       <TableCell>Floor {room.floor}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={room.room_type === 'single' ? 'border-blue-500 text-blue-600' : 'border-green-500 text-green-600'}>
+                          {room.room_type === 'single' ? 'Single' : 'Double'}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <Badge variant="secondary">{room.applications.length}</Badge>
                       </TableCell>

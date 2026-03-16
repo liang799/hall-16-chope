@@ -31,6 +31,7 @@ interface RoomTableProps {
 export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
   const [blockFilter, setBlockFilter] = useState<string>('all')
   const [floorFilter, setFloorFilter] = useState<string>('all')
+  const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -76,13 +77,14 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
 
       if (blockFilter !== 'all' && room.block !== blockFilter) return false
       if (floorFilter !== 'all' && room.floor !== parseInt(floorFilter)) return false
+      if (roomTypeFilter !== 'all' && room.room_type !== roomTypeFilter) return false
       if (statusFilter !== 'all' && status !== statusFilter) return false
       if (searchQuery && !room.room_number.toLowerCase().includes(searchQuery.toLowerCase()))
         return false
 
       return true
     })
-  }, [rooms, blockFilter, floorFilter, statusFilter, searchQuery])
+  }, [rooms, blockFilter, floorFilter, roomTypeFilter, statusFilter, searchQuery])
 
   return (
     <div className="space-y-4">
@@ -120,6 +122,17 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
           </SelectContent>
         </Select>
 
+        <Select value={roomTypeFilter} onValueChange={setRoomTypeFilter}>
+          <SelectTrigger className="w-36">
+            <SelectValue placeholder="Room Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="single">Single</SelectItem>
+            <SelectItem value="double">Double</SelectItem>
+          </SelectContent>
+        </Select>
+
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-36">
             <SelectValue placeholder="Status" />
@@ -150,6 +163,7 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
               <TableHead>Room</TableHead>
               <TableHead>Block</TableHead>
               <TableHead>Floor</TableHead>
+              <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Applications</TableHead>
               <TableHead className="text-right">Action</TableHead>
@@ -158,7 +172,7 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
           <TableBody>
             {filteredRooms.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   No rooms found matching your filters
                 </TableCell>
               </TableRow>
@@ -170,6 +184,11 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
                     <TableCell className="font-medium">{room.room_number}</TableCell>
                     <TableCell>Block {room.block}</TableCell>
                     <TableCell>Floor {room.floor}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={room.room_type === 'single' ? 'border-blue-500 text-blue-600' : 'border-green-500 text-green-600'}>
+                        {room.room_type === 'single' ? 'Single' : 'Double'}
+                      </Badge>
+                    </TableCell>
                     <TableCell>{getStatusBadge(status)}</TableCell>
                     <TableCell>
                       {room.applications.length > 0 ? (
