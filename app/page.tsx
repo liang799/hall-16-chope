@@ -3,7 +3,24 @@ import { Header } from '@/components/header'
 import { HomeContent } from '@/components/home-content'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
+import Link from 'next/link'
 import type { Profile, RoomWithApplications, ApplicationWithApplicant } from '@/lib/types'
+
+// Map error codes to user-friendly messages
+const errorMessages: Record<string, { title: string; description: string }> = {
+  otp_expired: {
+    title: 'Link Expired',
+    description: 'The email verification link has expired. Please request a new one by signing up again.',
+  },
+  access_denied: {
+    title: 'Access Denied',
+    description: 'You do not have permission to access this resource.',
+  },
+  invalid_request: {
+    title: 'Invalid Request',
+    description: 'The request was invalid. Please try again.',
+  },
+}
 
 type Result<T> = 
   | { success: true; data: T; error: null }
@@ -104,7 +121,15 @@ function ErrorDisplay({ title, message }: { title: string; message: string }) {
   )
 }
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const params = await searchParams
+  const errorCode = params.error_code as string | undefined
+  const errorDescription = params.error_description as string | undefined
+  
   const [roomsResult, userResult] = await Promise.all([getRooms(), getCurrentUser()])
 
   if (!roomsResult.success) {
@@ -114,9 +139,30 @@ export default async function HomePage() {
   // User errors are less critical - show page but user might be logged out
   const user = userResult.success ? userResult.data : null
 
+  // Get error message based on error code
+  const authError = errorCode ? errorMessages[errorCode] : null
+  const authErrorMessage = authError || (errorDescription ? {
+    title: 'Authentication Error',
+    description: decodeURIComponent(errorDescription.replace(/\+/g, ' ')),
+  } : null)
+
   return (
     <div className="min-h-screen bg-background">
       <Header user={user} />
+      {authErrorMessage && (
+        <div className="container px-4 md:px-6 lg:px-8 pt-6">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>{authErrorMessage.title}</AlertTitle>
+            <AlertDescription className="flex flex-col gap-2">
+              <span>{authErrorMessage.description}</span>
+              <Link href="/auth/sign-up" className="underline hover:no-underline">
+                Click here to sign up again
+              </Link>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
       <HomeContent rooms={roomsResult.data} user={user} />
     </div>
   )
