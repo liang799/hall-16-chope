@@ -100,6 +100,9 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
             <SelectItem value="all">All Blocks</SelectItem>
             <SelectItem value="A">Block A</SelectItem>
             <SelectItem value="B">Block B</SelectItem>
+            <SelectItem value="C">Block C</SelectItem>
+            <SelectItem value="D">Block D</SelectItem>
+            <SelectItem value="E">Block E</SelectItem>
           </SelectContent>
         </Select>
 

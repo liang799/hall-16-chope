@@ -233,7 +233,7 @@ export function ApplicationForm({ roomId, roomNumber, open, onClose }: Applicati
                     id="previousRoom"
                     value={formData.previousRoom}
                     onChange={(e) => handleInputChange('previousRoom', e.target.value)}
-                    placeholder="e.g., A-05-12"
+                    placeholder="e.g., 16A-05-12"
                   />
                 </div>
               </div>
