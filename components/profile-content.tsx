@@ -105,7 +105,7 @@ export function ProfileContent({ user }: ProfileContentProps) {
   }
 
   return (
-    <main className="container py-8 max-w-2xl">
+    <main className="container px-4 md:px-6 lg:px-8 py-8 max-w-2xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight mb-2">Profile Settings</h1>
         <p className="text-muted-foreground text-lg">
