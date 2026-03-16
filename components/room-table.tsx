@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,7 +10,6 @@ import {
   getPaginationRowModel,
   flexRender,
   createColumnHelper,
-  type ColumnDef,
   type SortingState,
   type ColumnFiltersState,
 } from '@tanstack/react-table'
@@ -99,7 +99,7 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
     })
   }, [rooms, blockFilter, floorFilter, roomTypeFilter, statusFilter])
 
-  const columns = useMemo<ColumnDef<RoomWithApplications, unknown>[]>(
+  const columns = useMemo(
     () => [
       columnHelper.accessor('room_number', {
         header: ({ column }) => (
@@ -112,7 +112,11 @@ export function RoomTable({ rooms, onApply, isLoggedIn }: RoomTableProps) {
             <ArrowUpDown className="ml-2 h-4 w-4" />
           </Button>
         ),
-        cell: (info) => <span className="font-medium">{info.getValue()}</span>,
+        cell: (info) => (
+          <Link href={`/room/${info.row.original.id}`} className="font-medium hover:underline">
+            {info.getValue()}
+          </Link>
+        ),
         filterFn: 'includesString',
       }),
       columnHelper.accessor('block', {
